@@ -20,7 +20,13 @@ app.use(express.json());
 app.use('/api/leads', leadRoutes);
 app.use('/api/admin', adminRoutes);
 
-const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => {
-  console.log(`🚀 API corriendo en puerto ${PORT}`);
+const PORT = Number(process.env.PORT) || 3001;
+
+app.use(cors({
+  origin: process.env.FRONTEND_URL, // La URL de tu Vercel
+  credentials: true
+}));
+
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`Servidor activo en puerto ${PORT}`);
 });
