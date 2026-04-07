@@ -1,16 +1,19 @@
 import express, { Request, Response } from 'express';
 import { createClient } from '@supabase/supabase-js';
 import { isAdmin } from '../middleware/auth';
-// Importamos el tipo de la base de datos que subiste
 import { Database } from '../types/database.types'; 
 
 const router = express.Router();
 
-// Tipamos el cliente de Supabase para que nos avise de errores en los nombres de columnas
 const supabase = createClient<Database>(
   process.env.SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
+
+/**
+ * CONFIGURACIÓN DE ESTADOS (Sincronizado con Frontend)
+ */
+const VALID_STATUSES = ['nuevo', 'contactado', 'en_proceso', 'finalizado'];
 
 /**
  * ENDPOINT PÚBLICO: Captura de Lead
@@ -23,14 +26,14 @@ router.post('/', async (req: Request, res: Response) => {
   }
 
   try {
-    // Al estar tipado, Supabase sabe que 'leads' tiene columnas específicas
     const { data, error } = await supabase
       .from('leads')
       .insert({
-        name: full_name,           // Mapeo de 'full_name' a 'name' según tu DB
+        name: full_name,
         email: email,
         whatsapp: whatsapp,
-        triage_answers: metadata,  // Mapeo de 'metadata' a 'triage_answers'
+        triage_answers: metadata,
+        status: 'nuevo', // Estado inicial por defecto
         created_at: new Date().toISOString()
       })
       .select()
@@ -48,6 +51,7 @@ router.post('/', async (req: Request, res: Response) => {
  * ENDPOINTS PROTEGIDOS (Solo Admins)
  */
 
+// Obtener todos los leads
 router.get('/', isAdmin, async (_req: Request, res: Response) => {
   try {
     const { data, error } = await supabase
@@ -62,12 +66,14 @@ router.get('/', isAdmin, async (_req: Request, res: Response) => {
   }
 });
 
+// Obtener un lead específico
 router.get('/:id', isAdmin, async (req: Request, res: Response) => {
+  const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
   try {
     const { data, error } = await supabase
       .from('leads')
       .select('*')
-      .eq('id', Array.isArray(req.params.id) ? req.params.id[0] : req.params.id)
+      .eq('id', id)
       .single();
 
     if (error) throw error;
@@ -77,52 +83,50 @@ router.get('/:id', isAdmin, async (req: Request, res: Response) => {
   }
 });
 
-router.delete('/:id', isAdmin, async (req: Request, res: Response) => {
-  try {
-    const { error } = await supabase
-      .from('leads')
-      .delete()
-      .eq('id', Array.isArray(req.params.id) ? req.params.id[0] : req.params.id);
-
-    if (error) throw error;
-    res.json({ success: true, message: "Lead eliminado" });
-  } catch (err: any) {
-    res.status(500).json({ error: err.message });
-  }
-});
+// Actualizar Status (Kanban Drag & Drop)
 router.put('/:id', isAdmin, async (req: Request, res: Response) => {
   const { status } = req.body;
-  const { id } = req.params;
-  const leadId = Array.isArray(id) ? id[0] : id;
+  const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+
+  // Validación de seguridad para evitar estados no deseados
+  if (!VALID_STATUSES.includes(status)) {
+    return res.status(400).json({ 
+      error: `Status inválido. Use: ${VALID_STATUSES.join(', ')}` 
+    });
+  }
 
   try {
     const { data, error } = await supabase
       .from('leads')
       .update({ status })
-      .eq('id', leadId)
-      .select();
+      .eq('id', id)
+      .select()
+      .single();
 
     if (error) throw error;
     res.json({ success: true, data });
   } catch (err: any) {
+    console.error("Error al actualizar status:", err);
     res.status(500).json({ error: err.message });
   }
 });
-router.put('/:id/schedule', async (req: Request, res: Response) => {
-  const { id } = req.params;
+
+// Agendar Reunión (Actualiza triage_answers sin borrar lo anterior)
+router.put('/:id/schedule', isAdmin, async (req: Request, res: Response) => {
+  const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
   const { schedule_date, schedule_time, reason } = req.body;
 
   try {
-    // 1. Obtenemos el lead actual para preservar triage_answers previos
+    // 1. Obtener datos actuales
     const { data: lead, error: fetchError } = await supabase
       .from('leads')
       .select('triage_answers')
-      .eq('id', Array.isArray(id) ? id[0] : id)
+      .eq('id', id)
       .single();
 
     if (fetchError) throw fetchError;
 
-    // 2. Mezclamos datos
+    // 2. Mezclar el nuevo agendamiento con las respuestas existentes
     const currentAnswers = (lead.triage_answers as object) || {};
     const updatedAnswers = {
       ...currentAnswers,
@@ -134,12 +138,11 @@ router.put('/:id/schedule', async (req: Request, res: Response) => {
       }
     };
 
-    // 3. Guardamos
-    const leadId = Array.isArray(id) ? id[0] : id;
+    // 3. Guardar cambios
     const { data, error } = await supabase
       .from('leads')
       .update({ triage_answers: updatedAnswers })
-      .eq('id', leadId)
+      .eq('id', id)
       .select()
       .single();
 
@@ -150,4 +153,21 @@ router.put('/:id/schedule', async (req: Request, res: Response) => {
     res.status(500).json({ error: err.message || "Error al actualizar agendamiento" });
   }
 });
+
+// Eliminar Lead
+router.delete('/:id', isAdmin, async (req: Request, res: Response) => {
+  const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+  try {
+    const { error } = await supabase
+      .from('leads')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
+    res.json({ success: true, message: "Lead eliminado" });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 export default router;
