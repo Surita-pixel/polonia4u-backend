@@ -14,7 +14,7 @@ const supabase = createClient<Database>(
   }
 );
 const router = express.Router();
-router.post("/user/login", async (req: Request, res: Response) => {
+router.post("/login", async (req: Request, res: Response) => {
   const { email, password } = req.body;
 
   try {
@@ -57,3 +57,4 @@ router.post("/user/login", async (req: Request, res: Response) => {
     res.status(500).json({ error: "Erro interno do servidor" });
   }
 });
+export default router;

@@ -3,6 +3,7 @@ import express from 'express';
 import cors from 'cors';
 import leadRoutes from './routes/leads';
 import adminRoutes from './routes/admin';
+import usersRoutes from './routes/users'
 
 const app = express();
 
@@ -33,7 +34,7 @@ app.use(express.json());
 // Rutas
 app.use('/api/leads', leadRoutes);
 app.use('/api/admin', adminRoutes);
-
+app.use('/api/user', usersRoutes)
 // El puerto debe ser Number para Render
 const PORT = Number(process.env.PORT) || 3001;
 
