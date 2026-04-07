@@ -72,5 +72,18 @@ router.post("/login", async (req: Request, res: Response) => {
     res.status(500).json({ error: "Error interno del servidor" });
   }
 });
+router.post("/logout", async (req: Request, res: Response) => {
+  try {
+    // En Supabase, el cierre de sesión se maneja principalmente en el cliente
+    // Pero podemos notificar al servidor para auditoría si fuera necesario.
+    const { error } = await supabase.auth.signOut();
+    
+    if (error) return res.status(500).json({ error: error.message });
+    
+    res.json({ message: "Sessão encerrada com sucesso" });
+  } catch (err) {
+    res.status(500).json({ error: "Erro interno ao sair" });
+  }
+});
 
 export default router;
