@@ -9,6 +9,19 @@ const supabase = createClient<Database>(
     auth: { autoRefreshToken: false, persistSession: false }
   }
 );
+const getAdminClient = () => {
+  return createClient<Database>(
+    process.env.SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+        detectSessionInUrl: false // Muy importante
+      }
+    }
+  );
+};
 
 const router = express.Router();
 
@@ -39,6 +52,7 @@ router.post("/login", async (req: Request, res: Response) => {
 });
 // 2. REGISTRO AUTOMÁTICO POST-PAGO
 router.post("/register-after-payment", async (req: Request, res: Response) => {
+  const adminSupabase = getAdminClient()
   const { email, name, leadId } = req.body;
   
   try {

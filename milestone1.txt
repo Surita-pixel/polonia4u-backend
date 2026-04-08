@@ -1,0 +1,93 @@
+Milestone 1 – Architecture + Front-end & Triage (Weeks 1 & 2, $450)
+
+1. Objectives
+ - Build a robust foundation that ensures all future milestones (contracts, payments, portal) work seamlessly.
+ - Make sure the triage wizard works and sends leads to the CRM/Kanban correctly.
+ - Validate a functional front-end that connects to the backend APIs (even with placeholder content).
+ - Ensure all critical security and compliance settings (RLS, GDPR/LGPD) are configured.
+
+2. Features & Deliverables
+
+a) Backend – Core Architecture
+
+ - Node.js + TypeScript project scaffold
+ - Modular folder structure:
+  * `/modules/triage`
+  * `/modules/proposal`
+  * `/modules/payment`
+  * `/modules/contract`
+  * `/modules/portal`
+  * `/modules/admin`
+  * `/modules/notifications`
+
+ - Database schema setup (PostgreSQL via Supabase):
+  * `Lead`
+  * `FamilyGroup`
+  * `Status`
+  * `Event`
+  * `Contract` (placeholder)
+  * `Payment` (placeholder)
+
+State machine skeleton:
+  * lead → proposal → contract → payment → portal
+  * Event-driven model with queues and retry placeholders
+ - Webhook and event skeletons ready for Stripe, Clicksign, and future integrations
+ - RLS setup to ensure user data isolation
+ - Logging and audit placeholder
+
+Validation:
+
+* Backend compiles without errors
+* Can receive triage API calls and store leads (mock data is fine)
+* Event system skeleton in place
+
+b) Frontend – Institutional Website + Triage Wizard
+
+ - Next.js + Tailwind setup (SSR for public pages, CSR for triage)
+ - Placeholder pages:
+  * Home page
+  * Services page
+  * Multi-step Triage Wizard
+
+ - Wizard behavior:
+  * Multi-step with progress bar
+  * Conditional questions based on JSON or mock DB
+  * Gated final step: Name / Email / WhatsApp
+  * No partial persistence
+ - Lead submission connects to backend API
+ - Placeholder for exit-intent popup and chatbot qualifier
+ - Responsive design (mobile-first)
+
+Validation:
+ - Users can navigate the wizard end-to-end
+ - Leads appear in backend database
+ -Data can flow into CRM/Kanban (simulated for now)
+
+c) Integration / Event Flow (Skeleton)
+
+ - Backend APIs ready to handle lead creation
+ - Events fired on lead submission (`lead_created`)
+ - Queues / retry logic scaffolded for future payments and contracts
+ - Placeholder for webhook processing (Stripe / Clicksign)
+
+3. Milestone Outcome
+
+By the end of Milestone 1, you will have:
+
+1. Fully scaffolded backend with all modules defined and a state machine skeleton
+
+2. Database + RLS configured for secure lead storage
+
+3. Functional front-end:
+
+ - Home + Services + Triage Wizard
+ - Leads submitted from wizard reach backend
+
+4. Event-driven architecture placeholders for future milestones (payments, contracts, portal)
+
+5. Validation points for client:
+ - Triage wizard works end-to-end
+ - Leads stored in backend / CRM mock
+ - Front-end pages are responsive and functional
+
+6. Foundation for Milestone 2 (Admin + Contracts + Payments)
