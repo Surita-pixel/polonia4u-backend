@@ -13,7 +13,7 @@ const supabase = createClient<Database>(
   }
 );
 
-export type EventType = 'lead_created' | 'proposal_approved' | 'contract_signed' | 'payment_completed';
+export type EventType = 'lead_created' | 'payment_created' | 'proposal_approved' | 'contract_signed' | 'payment_completed' | 'contract_created';
 
 export type EventPayload = {
   type: EventType;
