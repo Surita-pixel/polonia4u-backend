@@ -1,0 +1,14 @@
+### Prueba: Crear lead y verificar evento
+POST http://localhost:3001/api/leads
+Content-Type: application/json
+
+{
+  "full_name": "Test User Event",
+  "email": "testevent@demo.com",
+  "whatsapp": "+5511999999999",
+  "metadata": { "parentesco": "avos", "documentos": "sim" },
+  "source": "test-script"
+}
+
+### Luego, revisa la tabla 'events' en Supabase:
+# SELECT * FROM events ORDER BY created_at DESC LIMIT 5;

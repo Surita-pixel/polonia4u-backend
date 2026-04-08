@@ -4,6 +4,9 @@ import cors from 'cors';
 import leadRoutes from './routes/leads';
 import adminRoutes from './routes/admin';
 import usersRoutes from './routes/users'
+import webhookRoutes from './routes/webhooks';
+import paymentsRoutes from './routes/payments';
+import contractsRoutes from './routes/contracts';
 
 const app = express();
 
@@ -35,6 +38,9 @@ app.use(express.json());
 app.use('/api/leads', leadRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/user', usersRoutes)
+app.use('/api/webhooks', webhookRoutes)
+app.use('/api/payments', paymentsRoutes)
+app.use('/api/contracts', contractsRoutes)
 // El puerto debe ser Number para Render
 const PORT = Number(process.env.PORT) || 3001;
 

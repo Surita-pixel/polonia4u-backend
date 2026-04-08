@@ -7,7 +7,7 @@
     "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
-    "update-types": "supabase gen types typescript --project-id vrcictftdubbxerlyozv > types/database.types.ts"
+    "update-types": "supabase gen types typescript --project-id vrcictftdubbxerlyozv > src/types/database.types.ts"
   },
   "keywords": [],
   "author": "",
@@ -17,7 +17,8 @@
     "@supabase/supabase-js": "^2.101.1",
     "cors": "^2.8.6",
     "dotenv": "^17.4.1",
-    "express": "^5.2.1"
+    "express": "^5.2.1",
+    "winston": "^3.19.0"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",

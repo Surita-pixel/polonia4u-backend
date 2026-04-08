@@ -1,10 +1,13 @@
+
 import express, { Request, Response } from 'express';
-import { createClient } from '@supabase/supabase-js';
+import { createLead as triageCreateLead } from '../modules/triage';
 import { isAdmin } from '../middleware/auth';
-import { Database } from '../types/database.types'; 
+import { createClient } from '@supabase/supabase-js';
+import { Database } from '../types/database.types';
 
 const router = express.Router();
 
+// Instancia de Supabase para uso de servicio (Service Role)
 const supabase = createClient<Database>(
   process.env.SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -19,27 +22,12 @@ const VALID_STATUSES = ['nuevo', 'contactado', 'en_proceso', 'finalizado'];
  * ENDPOINT PÚBLICO: Captura de Lead
  */
 router.post('/', async (req: Request, res: Response) => {
-  const { full_name, email, whatsapp, metadata } = req.body;
-
+  const { full_name, email, whatsapp, metadata, source } = req.body;
   if (!full_name || !email || !whatsapp) {
     return res.status(400).json({ error: "Datos de contacto obligatorios" });
   }
-
   try {
-    const { data, error } = await supabase
-      .from('leads')
-      .insert({
-        name: full_name,
-        email: email,
-        whatsapp: whatsapp,
-        triage_answers: metadata,
-        status: 'nuevo', // Estado inicial por defecto
-        created_at: new Date().toISOString()
-      })
-      .select()
-      .single();
-
-    if (error) throw error;
+    const data = await triageCreateLead({ full_name, email, whatsapp, metadata, source });
     res.status(201).json({ success: true, data });
   } catch (err: any) {
     console.error("Error al guardar lead:", err);
