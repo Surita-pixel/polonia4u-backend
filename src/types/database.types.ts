@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      access_logs: {
+        Row: {
+          action: string
+          admin_id: string | null
+          created_at: string | null
+          id: string
+          ip_address: string | null
+          resource_type: string | null
+          target_user_id: string | null
+        }
+        Insert: {
+          action: string
+          admin_id?: string | null
+          created_at?: string | null
+          id?: string
+          ip_address?: string | null
+          resource_type?: string | null
+          target_user_id?: string | null
+        }
+        Update: {
+          action?: string
+          admin_id?: string | null
+          created_at?: string | null
+          id?: string
+          ip_address?: string | null
+          resource_type?: string | null
+          target_user_id?: string | null
+        }
+        Relationships: []
+      }
       contracts: {
         Row: {
           created_at: string | null
@@ -189,6 +219,7 @@ export type Database = {
           email: string
           id: string
           name: string
+          source: string | null
           status: string | null
           triage_answers: Json
           whatsapp: string
@@ -198,6 +229,7 @@ export type Database = {
           email: string
           id?: string
           name: string
+          source?: string | null
           status?: string | null
           triage_answers?: Json
           whatsapp: string
@@ -207,6 +239,7 @@ export type Database = {
           email?: string
           id?: string
           name?: string
+          source?: string | null
           status?: string | null
           triage_answers?: Json
           whatsapp?: string
@@ -302,39 +335,48 @@ export type Database = {
       profiles: {
         Row: {
           address: string | null
+          consent_date: string | null
           cpf: string | null
           created_at: string | null
           email: string | null
+          gdpr_consent: boolean | null
           id: string
           lead_id: string | null
           name: string | null
           payment_status: string | null
+          privacy_policy_version: string | null
           rg: string | null
           role: string | null
           whatsapp: string | null
         }
         Insert: {
           address?: string | null
+          consent_date?: string | null
           cpf?: string | null
           created_at?: string | null
           email?: string | null
+          gdpr_consent?: boolean | null
           id: string
           lead_id?: string | null
           name?: string | null
           payment_status?: string | null
+          privacy_policy_version?: string | null
           rg?: string | null
           role?: string | null
           whatsapp?: string | null
         }
         Update: {
           address?: string | null
+          consent_date?: string | null
           cpf?: string | null
           created_at?: string | null
           email?: string | null
+          gdpr_consent?: boolean | null
           id?: string
           lead_id?: string | null
           name?: string | null
           payment_status?: string | null
+          privacy_policy_version?: string | null
           rg?: string | null
           role?: string | null
           whatsapp?: string | null
@@ -410,7 +452,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      is_admin: { Args: never; Returns: boolean }
     }
     Enums: {
       [_ in never]: never
