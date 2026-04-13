@@ -1,114 +1,88 @@
-import express, { Request, Response } from 'express';
-import { createClient } from '@supabase/supabase-js';
-import { Database } from '../types/database.types';
-import { isAdmin } from '../middleware/auth';
-import { auditLog } from '../middleware/audit';
+import express, { Request, Response } from "express";
+import { createClient } from "@supabase/supabase-js";
+import { Database } from "../types/database.types";
+import { isAdmin } from "../middleware/auth";
 
 const router = express.Router();
 
-const supabaseAdmin = createClient<Database>(
+// CONFIGURACIÓN CORREGIDA: persistSession: false es vital en el backend
+const supabase = createClient<Database>(
   process.env.SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+      detectSessionInUrl: false
+    }
+  }
 );
 
-const VALID_STATUSES = ['nuevo', 'contactado', 'en_proceso', 'finalizado'];
+router.post("/login", async (req: Request, res: Response) => {
+  const { email, password } = req.body;
 
-/**
- * HELPER: Normaliza el ID
- * Asegura que sea un string simple, tomando el primer elemento si es un array.
- */
-const getSafeId = (id: string | string[]): string => Array.isArray(id) ? id[0] : id;
-
-// 1. OBTENER LEADS
-router.get('/', isAdmin, auditLog('LIST_LEADS'), async (_req: Request, res: Response) => {
   try {
-    const { data, error } = await supabaseAdmin
-      .from('leads')
-      .select('id, name, email, whatsapp, status, created_at')
-      .order('created_at', { ascending: false });
+    // 1. Autenticación del usuario
+    const { data, error: authError } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
 
-    if (error) throw error;
-    res.json({ data });
-  } catch (err: any) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// 2. OBTENER UN LEAD
-router.get('/:id', async (req: Request, res: Response) => {
-  // Corregimos la asignación forzando el tipo string
-  const id = getSafeId(req.params.id);
-  
-  try {
-    const { data, error } = await supabaseAdmin
-      .from('leads')
-      .select('id, name, email, status')
-      .eq('id', id)
-      .single();
-
-    if (error || !data) return res.status(404).json({ error: "Lead no encontrado" });
-
-    if (data.status === 'finalizado') {
-      return res.status(400).json({ error: "Este pedido já foi processado." });
+    if (authError) {
+      return res.status(401).json({ error: authError.message });
     }
 
-    res.json({ data });
-  } catch (err: any) {
-    res.status(500).json({ error: "Error interno" });
-  }
-});
+    const userId = data.user.id;
+    console.log("ID de usuario autenticado:", userId);
 
-// 3. ACTUALIZAR WIZARD
-router.put('/:id/wizard', async (req: Request, res: Response) => {
-  const id = getSafeId(req.params.id);
-  const { identity_data, children_count, relatives, gdpr_consent } = req.body;
-
-  if (!gdpr_consent) {
-    return res.status(400).json({ error: "El consentimiento de privacidad es obligatorio." });
-  }
-
-  try {
-    const { data: lead } = await supabaseAdmin.from('leads').select('triage_answers').eq('id', id).single();
-    const currentAnswers = (lead?.triage_answers as Record<string, any>) || {};
-
-    const updatedAnswers = {
-      ...currentAnswers,
-      wizard_identity: identity_data,
-      wizard_family: {
-        children_count,
-        relatives,
-        consent_accepted: true,
-        completed_at: new Date().toISOString()
-      }
-    };
-
-    const { data, error } = await supabaseAdmin
-      .from('leads')
-      .update({ triage_answers: updatedAnswers })
-      .eq('id', id)
-      .select('id, triage_answers')
+    // 2. Consulta de perfil con manejo de errores detallado
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", userId)
       .single();
 
-    if (error) throw error;
-    res.json({ success: true, data });
-  } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    // Depuración en consola
+    if (profileError) {
+      console.error("Error al consultar tabla profiles:", {
+        code: profileError.code,
+        message: profileError.message,
+        hint: profileError.hint
+      });
+    }
+
+    console.log("Resultado de la consulta de perfil:", profile);
+
+    // 3. Verificación de rol
+    if (!profile || profile.role !== "admin") {
+      console.log(`Acceso denegado para el ID: ${userId}. Rol encontrado: ${profile?.role || 'null'}`);
+      return res
+        .status(403)
+        .json({ error: "No tienes permisos de administrador en la tabla de perfiles" });
+    }
+
+    // Login exitoso
+    res.json({ 
+      token: data.session?.access_token, 
+      user: data.user 
+    });
+
+  } catch (err) {
+    console.error("Error inesperado en el servidor:", err);
+    res.status(500).json({ error: "Error interno del servidor" });
   }
 });
-
-// 4. ELIMINAR LEAD
-router.delete('/:id', isAdmin, auditLog('DELETE_LEAD'), async (req: Request, res: Response) => {
-  const id = getSafeId(req.params.id);
+router.post("/logout", async (req: Request, res: Response) => {
   try {
-    const { error } = await supabaseAdmin
-      .from('leads')
-      .delete()
-      .eq('id', id);
-
-    if (error) throw error;
-    res.json({ success: true, message: "Datos eliminados permanentemente." });
-  } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    // En Supabase, el cierre de sesión se maneja principalmente en el cliente
+    // Pero podemos notificar al servidor para auditoría si fuera necesario.
+    const { error } = await supabase.auth.signOut();
+    
+    if (error) return res.status(500).json({ error: error.message });
+    
+    res.json({ message: "Sessão encerrada com sucesso" });
+  } catch (err) {
+    res.status(500).json({ error: "Erro interno ao sair" });
   }
 });
 
