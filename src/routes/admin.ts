@@ -17,7 +17,9 @@ const supabase = createClient<Database>(
     }
   }
 );
-
+function getAdminClient() {
+  return supabase;
+}
 router.post("/login", async (req: Request, res: Response) => {
   const { email, password } = req.body;
 
@@ -86,4 +88,58 @@ router.post("/logout", async (req: Request, res: Response) => {
   }
 });
 
+// Lógica para el Backend (Express/Node)
+router.post("/create-user", async (req: Request, res: Response) => {
+  const { email, password, name, whatsapp, leadId, role = "user" } = req.body;
+
+  // Validación básica
+  if (!email || !password || password.length < 8) {
+    return res.status(400).json({ error: "E-mail e senha válida (min 8 caracteres) são obrigatórios." });
+  }
+
+  try {
+    const adminSupabase = getAdminClient(); // Debe usar la Service Role Key
+
+    // 1. Crear usuario en Supabase Auth sin loguearlo
+    const { data: authData, error: authError } = await adminSupabase.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true,
+      user_metadata: { name, whatsapp }
+    });
+
+    if (authError) return res.status(400).json({ error: authError.message });
+    if (!authData.user) return res.status(500).json({ error: "Erro ao criar registro de autenticação." });
+
+    // 2. Sincronizar con la tabla de Perfiles (Profiles)
+    const { error: profileError } = await adminSupabase
+      .from("profiles")
+      .upsert({
+        id: authData.user.id,
+        email,
+        name: name || '',
+        whatsapp: whatsapp || '',
+        role: role,
+        gdpr_consent: true,
+        consent_date: new Date().toISOString(),
+        lead_id: leadId || null
+      });
+
+    if (profileError) {
+      console.error("Profile Error:", profileError);
+    }
+
+    res.status(201).json({
+      success: true,
+      message: "Usuário criado com sucesso.",
+      user: { id: authData.user.id, email }
+    });
+
+  } catch (err: any) {
+    console.error("Admin Create User Error:", err);
+    res.status(500).json({ error: "Erro interno no servidor" });
+  }
+});
+
 export default router;
+
