@@ -343,6 +343,7 @@ export type Database = {
           id: string
           lead_id: string | null
           name: string | null
+          needs_password_update: boolean | null
           payment_status: string | null
           privacy_policy_version: string | null
           rg: string | null
@@ -359,6 +360,7 @@ export type Database = {
           id: string
           lead_id?: string | null
           name?: string | null
+          needs_password_update?: boolean | null
           payment_status?: string | null
           privacy_policy_version?: string | null
           rg?: string | null
@@ -375,6 +377,7 @@ export type Database = {
           id?: string
           lead_id?: string | null
           name?: string | null
+          needs_password_update?: boolean | null
           payment_status?: string | null
           privacy_policy_version?: string | null
           rg?: string | null

@@ -105,55 +105,27 @@ router.put('/:id', isAdmin, async (req: Request, res: Response) => {
     res.status(500).json({ error: err.message });
   }
 });
-// Actualizar Agendamiento (Solo si el lead pertenece al usuario logueado)
+
+// Actualizar Agendamiento sin borrar triage previo
 router.put('/:id/schedule', async (req: Request, res: Response) => {
-  const leadId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+  const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
   const { schedule_date, schedule_time, reason } = req.body;
 
-  const authHeader = req.headers.authorization;
-  if (!authHeader) {
-    return res.status(401).json({ error: "Token não fornecido" });
-  }
-
-  const token = authHeader.split(' ')[1];
-  console.log("Token recebido para agendamento:", token);
   try {
-    // 1. Obtener el usuario autenticado
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-    console.log(user)
-    console.log(authError)
-    if (authError || !user) {
-      return res.status(401).json({ error: "Sessão inválida" });
-    }
-
-    // 2. VERIFICACIÓN DE SEGURIDAD: 
-    // Buscamos en 'profiles' si el usuario actual (user.id) es dueño de este lead_id
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('lead_id')
-      .eq('id', user.id) // El ID del perfil es el ID de Auth
-      .eq('lead_id', leadId)
-      .single();
-
-    if (profileError || !profile) {
-      return res.status(403).json({ error: "Acesso negado. Este lead não pertence à sua conta." });
-    }
-
-    // 3. Si pasó la validación, obtenemos el lead para actualizarlo
+    // 1. Obtener datos actuales de triage_answers
     const { data: lead, error: fetchError } = await supabase
       .from('leads')
       .select('triage_answers')
-      .eq('id', leadId)
+      .eq('id', id)
       .single();
 
-    if (fetchError || !lead) {
-      return res.status(404).json({ error: "Lead não encontrado" });
-    }
+    if (fetchError || !lead) throw new Error("Lead não encontrado");
 
-    // 4. Mezclar datos
+    // 2. Mezclar el nuevo objeto 'schedule' dentro del JSON existente
     const currentAnswers = (lead.triage_answers as Record<string, any>) || {};
+    
     const updatedAnswers = {
-      ...currentAnswers,
+      ...currentAnswers, // Mantiene lo que ya estaba (respuestas de triage, etc)
       schedule: {
         date: schedule_date,
         time: schedule_time,
@@ -162,23 +134,22 @@ router.put('/:id/schedule', async (req: Request, res: Response) => {
       }
     };
 
-    // 5. Actualizar
-    const { data, error: updateError } = await supabase
+    // 3. Actualizar en Supabase
+    const { data, error } = await supabase
       .from('leads')
       .update({ triage_answers: updatedAnswers })
-      .eq('id', leadId)
+      .eq('id', id)
       .select()
       .single();
 
-    if (updateError) throw updateError;
-    
+    if (error) throw error;
     res.json({ success: true, data });
-
   } catch (err: any) {
     console.error("Error al agendar:", err);
-    res.status(500).json({ error: "Erro interno ao atualizar agendamento" });
+    res.status(500).json({ error: err.message || "Erro ao atualizar agendamento" });
   }
 });
+
 // Eliminar Lead
 router.delete('/:id', isAdmin, async (req: Request, res: Response) => {
   const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
